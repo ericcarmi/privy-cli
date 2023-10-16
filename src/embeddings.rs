@@ -36,7 +36,7 @@ pub fn file_embeddings(file_path: String) -> (Vec<Vec<f32>>, Vec<String>) {
     let mut embeds = vec![];
     let mut strings = vec![];
     for line in lines {
-        if !line.is_empty() {
+        if !line.is_empty() && !line.replace('-', "").is_empty() && !line.trim().is_empty() {
             // println!("{:?}", line);
             let mut cmd =
                 std::process::Command::new("/Users/eric/Downloads/bert.cpp/build/bin/main");

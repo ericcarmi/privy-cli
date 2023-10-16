@@ -1,16 +1,12 @@
-use std::{
-    ffi::{OsStr, OsString},
-    fs::metadata,
-    process::Command,
-    time::Duration,
-};
-
 use clap::Parser;
+use std::{ffi::OsStr, fs::metadata, time::Duration};
 mod qdrant;
 use qdrant::*;
 mod embeddings;
 use embeddings::*;
-use tokio::time::sleep;
+use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
+use std::io::{self, Write};
+// use tokio::time::sleep;
 
 /// yarrrrrrgs
 #[derive(Parser, Debug)]
@@ -24,8 +20,6 @@ struct Args {
     #[arg(short = 'c', long)]
     collection: Option<String>,
 
-    // #[arg(short = 'q', long)]
-    // query: Option<String>,
     #[structopt(name = "ARGUMENTS")]
     rest: Vec<String>,
 }
@@ -49,7 +43,6 @@ async fn main() {
         let cname = file_path.clone();
         let mut collection_name = cname.as_str().replace('/', "-").replace(' ', "_");
         collection_name.remove(0);
-        collection_name.remove(collection_name.len() - 1);
         // println!("collection name: {:?}", collection_name);
         let r = check_collection(collection_name.as_str()).await;
         // println!("{:?}", r);
@@ -59,22 +52,61 @@ async fn main() {
                 let files = get_files(&file_path);
                 // println!("{:?}", files);
 
+                let progress_bar = ProgressBar::new(files.len() as u64);
+                progress_bar.set_draw_target(ProgressDrawTarget::stdout());
+                // progress_bar.set_style(
+                //     ProgressStyle::with_template("{spinner:.blue} {msg}")
+                //         .unwrap()
+                //         // For more spinners check out the cli-spinners project:
+                //         // https://github.com/sindresorhus/cli-spinners/blob/master/spinners.json
+                //         .tick_strings(&[
+                //             "▹▹▹▹▹",
+                //             "▸▹▹▹▹",
+                //             "▹▸▹▹▹",
+                //             "▹▹▸▹▹",
+                //             "▹▹▹▸▹",
+                //             "▹▹▹▹▸",
+                //             "▪▪▪▪▪",
+                //         ]),
+                // );
+
                 for file in files {
-                    let (embeds, strings) = file_embeddings(file);
-                    let r = upsert(embeds, strings, collection_name.as_str()).await;
-                    println!("wtf is this {:?}", r);
+                    let (embeds, strings) = file_embeddings(file.clone());
+                    let _r = upsert(embeds, strings, collection_name.as_str(), file.as_str()).await;
+                    // println!("wtf is this {:?}", r);
+                    // let r = io::stdout().write_all(b"\r");
+                    // let r = io::stdout().write_all(file.into_bytes().as_slice());
+                    progress_bar.inc(1);
+
+                    progress_bar.println(format!("adding {} to the collection", file.clone()));
+
+                    // io::stdout().flush().unwrap();
                 }
+                progress_bar.finish_with_message("done");
             } else {
-                let (embeds, strings) = file_embeddings(file_path);
-                let r = upsert(embeds, strings, collection_name.as_str()).await;
+                let (embeds, strings) = file_embeddings(file_path.clone());
+                let r = upsert(
+                    embeds,
+                    strings,
+                    collection_name.as_str(),
+                    file_path.as_str(),
+                )
+                .await;
                 // println!("{:?}", r);
             }
         }
     } else {
         if let Some(collection) = args.collection {
             if !rest.is_empty() {
-                let r = search(rest.as_str(), &collection).await;
-                println!("{:?}", r);
+                let r = search(rest.as_str(), Some(&collection)).await;
+                // println!("{:?}", r);
+            } else {
+                // must enter a query along with collection name
+            }
+        } else {
+            if !rest.is_empty() {
+                let r = search(rest.as_str(), None).await;
+                // println!("{:?}", r);
             } else {
                 // must enter a query along with collection name
             }
