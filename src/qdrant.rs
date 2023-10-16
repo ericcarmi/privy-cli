@@ -15,23 +15,11 @@ pub async fn upsert(
 ) -> Result<()> {
     let client = QdrantClient::from_url("http://localhost:6334").build()?;
 
-    if let Err(_collection_info) = client.collection_info(collection_name).await {
-        println!("\ncollection does not exist, creating it\n");
+    let collection_info = client.collection_info(collection_name).await?;
+    println!("{:?}", collection_info.result);
 
-        client
-            .create_collection(&CreateCollection {
-                collection_name: collection_name.into(),
-                vectors_config: Some(VectorsConfig {
-                    config: Some(Config::Params(VectorParams {
-                        size: 383, // magic number come from BERT model
-                        distance: Distance::Cosine.into(),
-                        ..Default::default()
-                    })),
-                }),
-                ..Default::default()
-            })
-            .await?;
-    }
+    let num_points = collection_info.result.expect("").points_count;
+    println!("{:?}", num_points);
 
     let mut points = vec![];
     for i in 0..embeds.len() {
@@ -39,13 +27,14 @@ pub async fn upsert(
         let payload: Payload = json!(
             {
                 "text": strings[i],
-                "line number": i,
+                "line_number": i,
+                "file_name": collection_name
             }
         )
         .try_into()
         .unwrap();
         points.push(PointStruct {
-            id: Some((i as u64).into()),
+            id: Some((i as u64 + num_points).into()),
             vectors: Some(v.into()),
             payload: payload.into(),
         })
@@ -58,10 +47,9 @@ pub async fn upsert(
     Ok(())
 }
 
-pub async fn search(query: &str) -> Result<()> {
+pub async fn search(query: &str, collection_name: &str) -> Result<()> {
     let client = QdrantClient::from_url("http://localhost:6334").build()?;
     let embeds = string_embeddings(query);
-    let collection_name = "test";
     let search_result = client
         .search_points(&SearchPoints {
             collection_name: collection_name.into(),
@@ -79,5 +67,49 @@ pub async fn search(query: &str) -> Result<()> {
         println!("\nresult {}: \n{}\n", i + 1, baz_payload);
     }
 
+    Ok(())
+}
+
+pub async fn check_collection(collection_name: &str) -> Result<()> {
+    let client = QdrantClient::from_url("http://localhost:6334").build()?;
+
+    // right now, creates or deletes then creates...will change later
+    if let Err(_collection_info) = client.collection_info(collection_name).await {
+        println!(
+            "\ncollection does not exist, creating collection {}\n",
+            collection_name
+        );
+
+        client
+            .create_collection(&CreateCollection {
+                collection_name: collection_name.into(),
+                vectors_config: Some(VectorsConfig {
+                    config: Some(Config::Params(VectorParams {
+                        size: 383, // magic number come from BERT model
+                        distance: Distance::Cosine.into(),
+                        ..Default::default()
+                    })),
+                }),
+                ..Default::default()
+            })
+            .await?;
+    } else {
+        // for now, just delete
+        // in the future, would like to check what exists, only update stuff...but that is complicated
+        client.delete_collection(collection_name).await?;
+        client
+            .create_collection(&CreateCollection {
+                collection_name: collection_name.into(),
+                vectors_config: Some(VectorsConfig {
+                    config: Some(Config::Params(VectorParams {
+                        size: 383, // magic number come from BERT model
+                        distance: Distance::Cosine.into(),
+                        ..Default::default()
+                    })),
+                }),
+                ..Default::default()
+            })
+            .await?;
+    }
     Ok(())
 }

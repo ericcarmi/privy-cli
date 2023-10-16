@@ -1,6 +1,5 @@
 use std::fs;
 use std::fs::metadata;
-use std::path::PathBuf;
 
 pub fn get_files(folder_path: &str) -> Vec<String> {
     let paths = fs::read_dir(folder_path).unwrap();
