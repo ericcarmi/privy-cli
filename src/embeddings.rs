@@ -1,4 +1,36 @@
 use std::fs;
+use std::fs::metadata;
+use std::path::PathBuf;
+
+pub fn get_files(folder_path: &str) -> Vec<String> {
+    let paths = fs::read_dir(folder_path).unwrap();
+    let md = metadata(folder_path).unwrap();
+    if !md.is_dir() {
+        println!("needs to be folder");
+        return vec![];
+    }
+
+    let mut files = vec![];
+    for path in paths {
+        let md = metadata(path.as_ref().unwrap().path()).unwrap();
+        if md.is_dir() {
+            // recursion? got a stack overflow...
+            files.append(&mut get_files(
+                path.as_ref().unwrap().path().to_str().unwrap(),
+            ));
+        }
+        if md.is_file() {
+            if let Some(ext) = path.as_ref().unwrap().path().extension() {
+                if ext == "md" {
+                    // println!("{:?}", path.unwrap().path().display());
+                    files.push(path.unwrap().path().to_str().unwrap().to_string());
+                }
+            }
+        }
+    }
+    files
+}
+
 pub fn file_embeddings(file_path: String) -> (Vec<Vec<f32>>, Vec<String>) {
     let contents = fs::read_to_string(file_path).expect("Should have been able to read the file");
     let lines = contents.split('\n');

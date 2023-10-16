@@ -13,24 +13,9 @@ pub async fn upsert(
     strings: Vec<String>,
     collection_name: &str,
 ) -> Result<()> {
-    // Example of top level client
-    // You may also use tonic-generated client from `src/qdrant.rs`
     let client = QdrantClient::from_url("http://localhost:6334").build()?;
 
-    let collections_list = client.list_collections().await?;
-    // dbg!(collections_list);
-    // collections_list = ListCollectionsResponse {
-    //     collections: [
-    //         CollectionDescription {
-    //             name: "test",
-    //         },
-    //     ],
-    //     time: 1.78e-6,
-    // }
-
-    // client.delete_collection(collection_name).await?;
-
-    if let Err(collection_info) = client.collection_info(collection_name).await {
+    if let Err(_collection_info) = client.collection_info(collection_name).await {
         println!("\ncollection does not exist, creating it\n");
 
         client
