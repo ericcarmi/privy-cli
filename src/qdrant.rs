@@ -82,7 +82,7 @@ pub async fn search(query: &str) -> Result<()> {
             collection_name: collection_name.into(),
             vector: embeds,
             // filter: Some(Filter::all([Condition::matches("what", 12)])),
-            limit: 10,
+            limit: 4,
             with_payload: Some(true.into()),
             ..Default::default()
         })

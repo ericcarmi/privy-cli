@@ -3,7 +3,6 @@ mod qdrant;
 use qdrant::*;
 mod embeddings;
 use embeddings::*;
-use std::env;
 
 /// yarrrrrrgs
 #[derive(Parser, Debug)]
@@ -28,15 +27,16 @@ impl Args {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    println!("{}", args.get_joined(" "));
+    let rest = args.get_joined(" ");
 
     if let Some(file_path) = args.file_path {
         let (embeds, strings) = file_embeddings(file_path);
         let r = upsert(embeds, strings, "poop2").await;
         // println!("{:?}", r);
+    } else {
+        if !rest.is_empty() {
+            let r = search(rest.as_str()).await;
+            println!("{:?}", r);
+        }
     }
-    // if let Some(query) = args.query {
-    // let r = search(query.as_str()).await;
-    // println!("{:?}", r);
-    // }
 }
