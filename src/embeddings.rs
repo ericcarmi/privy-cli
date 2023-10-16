@@ -1,7 +1,9 @@
 use std::fs;
-pub fn get_embeds(file_path: String) -> Vec<f32> {
+pub fn file_embeddings(file_path: String) -> (Vec<Vec<f32>>, Vec<String>) {
     let contents = fs::read_to_string(file_path).expect("Should have been able to read the file");
     let lines = contents.split('\n');
+    let mut embeds = vec![];
+    let mut strings = vec![];
     for line in lines {
         if !line.is_empty() {
             // println!("{:?}", line);
@@ -14,37 +16,19 @@ pub fn get_embeds(file_path: String) -> Vec<f32> {
                 line,
             ]);
             if let Ok(x) = r.output() {
-                // println!("{:?}", x.stdout);
-                let mut y = String::from_utf8(x.stdout).unwrap();
-                let mut embeds = vec![];
+                let y = String::from_utf8(x.stdout).unwrap();
+                strings.push(line.to_string());
+                let mut e = vec![];
                 for num in y.split(',') {
                     if let Ok(f) = num.trim().parse::<f32>() {
-                        embeds.push(f);
+                        e.push(f);
                     }
                 }
-                if !embeds.is_empty() {
-                    //upsert
-                    return embeds;
-                }
+                embeds.push(e);
             }
         }
     }
-    return vec![];
-    // let point = PointStruct {
-    //     id: Some(PointId::from(42)), // unique u64 or String
-    //     vectors: Some(vec![0.0_f32; 512].into()),
-    //     payload: std::collections::HashMap::from([
-    //         ("great".into(), Value::from(true)),
-    //         ("level".into(), Value::from(9000)),
-    //         ("text".into(), Value::from("Hi Qdrant!")),
-    //         ("list".into(), Value::from(vec![1.234, 0.815])),
-    //     ]),
-    // };
-    //
-    // let response = qdrant_client
-    //     .upsert_points("my_collection", vec![point], None)
-    //     .await?;
-    //# Ok(())
+    return (embeds, strings);
 }
 
 pub fn string_embeddings(string: &str) -> Vec<f32> {
@@ -56,7 +40,7 @@ pub fn string_embeddings(string: &str) -> Vec<f32> {
         string,
     ]);
     if let Ok(x) = r.output() {
-        let mut y = String::from_utf8(x.stdout).unwrap();
+        let y = String::from_utf8(x.stdout).unwrap();
         let mut embeds = vec![];
         for num in y.split(',') {
             if let Ok(f) = num.trim().parse::<f32>() {
