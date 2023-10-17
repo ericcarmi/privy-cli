@@ -20,7 +20,7 @@ pub fn get_files(folder_path: &str) -> Vec<String> {
         }
         if md.is_file() {
             if let Some(ext) = path.as_ref().unwrap().path().extension() {
-                if ext == "md" {
+                if ext == "md" || ext == "txt" {
                     // println!("{:?}", path.unwrap().path().display());
                     files.push(path.unwrap().path().to_str().unwrap().to_string());
                 }

@@ -1,3 +1,4 @@
+use clap;
 use clap::Parser;
 use std::{ffi::OsStr, fs::metadata, time::Duration};
 mod qdrant;
@@ -5,20 +6,27 @@ use qdrant::*;
 mod embeddings;
 use embeddings::*;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
-use std::io::{self, Write};
+// use std::io::{self, Write};
 // use tokio::time::sleep;
 
 /// yarrrrrrgs
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[derive(Parser, Debug, Clone)]
 struct Args {
     /// path of the folder or file
-    #[arg(short = 'f', long)]
+    #[clap(short = 'f', long)]
     fpath: Option<String>,
 
     /// collection name to search through
     #[arg(short = 'c', long)]
     collection: Option<String>,
+
+    /// delete collection
+    #[arg(short = 'd', long)]
+    delete: Option<String>,
+
+    /// list collections
+    #[clap(long, short = 'l', default_value = None, default_missing_value = None)]
+    list: Option<String>,
 
     #[structopt(name = "ARGUMENTS")]
     rest: Vec<String>,
@@ -44,7 +52,7 @@ async fn main() {
         let mut collection_name = cname.as_str().replace('/', "-").replace(' ', "_");
         collection_name.remove(0);
         // println!("collection name: {:?}", collection_name);
-        let r = check_collection(collection_name.as_str()).await;
+        let _r = check_collection(collection_name.as_str()).await;
         // println!("{:?}", r);
 
         if let Ok(md) = metadata(OsStr::new(&file_path)) {
@@ -54,38 +62,18 @@ async fn main() {
 
                 let progress_bar = ProgressBar::new(files.len() as u64);
                 progress_bar.set_draw_target(ProgressDrawTarget::stdout());
-                // progress_bar.set_style(
-                //     ProgressStyle::with_template("{spinner:.blue} {msg}")
-                //         .unwrap()
-                //         // For more spinners check out the cli-spinners project:
-                //         // https://github.com/sindresorhus/cli-spinners/blob/master/spinners.json
-                //         .tick_strings(&[
-                //             "▹▹▹▹▹",
-                //             "▸▹▹▹▹",
-                //             "▹▸▹▹▹",
-                //             "▹▹▸▹▹",
-                //             "▹▹▹▸▹",
-                //             "▹▹▹▹▸",
-                //             "▪▪▪▪▪",
-                //         ]),
-                // );
 
                 for file in files {
                     let (embeds, strings) = file_embeddings(file.clone());
                     let _r = upsert(embeds, strings, collection_name.as_str(), file.as_str()).await;
-                    // println!("wtf is this {:?}", r);
-                    // let r = io::stdout().write_all(b"\r");
-                    // let r = io::stdout().write_all(file.into_bytes().as_slice());
                     progress_bar.inc(1);
 
                     progress_bar.println(format!("adding {} to the collection", file.clone()));
-
-                    // io::stdout().flush().unwrap();
                 }
                 progress_bar.finish_with_message("done");
             } else {
                 let (embeds, strings) = file_embeddings(file_path.clone());
-                let r = upsert(
+                let _r = upsert(
                     embeds,
                     strings,
                     collection_name.as_str(),
@@ -98,23 +86,31 @@ async fn main() {
     } else {
         if let Some(collection) = args.collection {
             if !rest.is_empty() {
-                let r = search(rest.as_str(), Some(&collection)).await;
+                let _r = search(rest.as_str(), Some(&collection)).await;
                 // println!("{:?}", r);
             } else {
                 // must enter a query along with collection name
             }
         } else {
             if !rest.is_empty() {
-                let r = search(rest.as_str(), None).await;
+                let _r = search(rest.as_str(), None).await;
                 // println!("{:?}", r);
             } else {
                 // must enter a query along with collection name
             }
         }
     }
-    // if r.is_ok() {
-    // sleep(Duration::from_millis(1000)).await;
-    //     let x = r.unwrap().kill();
-    //     // println!("{:?}", x);
-    // }
+    if let Some(collection) = args.delete {
+        let r = delete_collection(collection.as_str()).await;
+        println!("{:?}", r);
+    }
+
+    if let Some(collection) = args.list {
+        let r = show_collection_info(&collection).await;
+        println!("{:?}", r);
+    } // if r.is_ok() {
+      // sleep(Duration::from_millis(1000)).await;
+      //     let x = r.unwrap().kill();
+      //     // println!("{:?}", x);
+      // }
 }

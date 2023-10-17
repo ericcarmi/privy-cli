@@ -2,11 +2,36 @@ use anyhow::Result;
 use qdrant_client::prelude::*;
 use qdrant_client::qdrant::vectors_config::Config;
 use qdrant_client::qdrant::{
-    Condition, CreateCollection, Filter, PointId, SearchPoints, Vector, VectorParams, VectorsConfig,
+    Condition, CreateCollection, Filter, SearchPoints, VectorParams, VectorsConfig,
 };
 use serde_json::json;
 
 use crate::embeddings::string_embeddings;
+
+pub async fn delete_collection(collection_name: &str) -> Result<()> {
+    let client = QdrantClient::from_url("http://localhost:6334").build()?;
+    client.delete_collection(collection_name).await?;
+
+    Ok(())
+}
+
+pub async fn list_collections() -> Result<()> {
+    let client = QdrantClient::from_url("http://localhost:6334").build()?;
+    let collections = client.list_collections().await?.collections;
+    for collection in collections {
+        println!("{:?}", collection.name);
+    }
+
+    Ok(())
+}
+
+pub async fn show_collection_info(collection_name: &str) -> Result<()> {
+    let client = QdrantClient::from_url("http://localhost:6334").build()?;
+    let collection = client.collection_info(collection_name).await?.result;
+    println!("{:?}", collection);
+
+    Ok(())
+}
 
 pub async fn upsert(
     embeds: Vec<Vec<f32>>,
